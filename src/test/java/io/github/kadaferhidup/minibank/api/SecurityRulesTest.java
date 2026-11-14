@@ -65,6 +65,14 @@ class SecurityRulesTest extends IntegrationTest {
     }
 
     @Test
+    void unknownEndpointReturnsProblemJson() {
+        Customer c = newCustomer("Indra Nyasar");
+        Resp r = get("/api/tidak-ada", c.token());
+        assertThat(r.status()).isEqualTo(404);
+        assertThat(r.code()).isEqualTo("NOT_FOUND");
+    }
+
+    @Test
     void repeatedFailedLoginIsThrottled() {
         Customer c = newCustomer("Gilang Lupa");
         for (int i = 0; i < 5; i++) {
