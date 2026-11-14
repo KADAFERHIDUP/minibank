@@ -45,6 +45,9 @@ jobs:
           for i in $(seq 1 60); do curl -fs localhost:8080/actuator/health && break; sleep 2; done
           curl -fs localhost:8080/actuator/health | grep UP
           curl -fs localhost:8080/v3/api-docs > /dev/null
+          curl -fs localhost:8080/ | grep -q "js/app.js"
+          curl -fs localhost:8080/js/app.js > /dev/null
+          curl -fs localhost:8080/css/app.css > /dev/null
           curl -fs -X POST localhost:8080/api/auth/login -H 'Content-Type: application/json' \
             -d '{"email":"teller@minibank.local","password":"Teller12345"}' | grep accessToken
       - name: Log aplikasi kalau gagal

@@ -6,6 +6,10 @@ Backend core banking sederhana: nasabah bisa daftar, buka rekening, cek nama pen
 
 Fokus proyek ini bukan jumlah fitur, tapi **kebenaran data uang**: saldo tidak boleh minus, uang tidak boleh hilang atau tercipta, dan permintaan yang terkirim dua kali tidak boleh memotong saldo dua kali, termasuk saat ada banyak permintaan di detik yang sama.
 
+Ada juga tampilan web internet banking di `http://localhost:8080/`, ditulis tanpa framework (HTML, CSS, JavaScript biasa) dan disajikan langsung oleh Spring Boot.
+
+![Beranda MiniBank](docs/ui-beranda.png)
+
 **Stack:** Java 21 · Spring Boot 3.5 · Spring Security (JWT) · Spring Data JPA · PostgreSQL 16 · Flyway · springdoc OpenAPI · JUnit 5 · Testcontainers · Docker · GitHub Actions
 
 ---
@@ -26,6 +30,21 @@ Fokus proyek ini bukan jumlah fitur, tapi **kebenaran data uang**: saldo tidak b
 | Salah ketik nomor rekening tujuan | Nomor rekening 10 digit memakai **digit pemeriksa Luhn**, jadi salah ketik satu angka langsung tertolak. Ada juga endpoint cek nama penerima yang menyamarkan nama (`Ah*** Um******`). |
 | Bukti kalau datanya benar | Endpoint **rekonsiliasi** memeriksa total debit = total kredit, tiap transaksi seimbang, dan saldo tiap rekening sama dengan hasil hitung ulang buku besar. |
 | Siapa melakukan apa | Tabel `audit_logs` mencatat register, login (berhasil/gagal), PIN salah/terkunci, transfer, setor, tarik, bekukan, dan aktifkan rekening beserta IP. |
+
+## Tampilan web
+
+Satu halaman di `src/main/resources/static/` yang memanggil API yang sama dengan Swagger. Isinya:
+
+- **Masuk / buka rekening** dengan pesan galat per kolom dari respons `fields` API.
+- **Beranda**: grafik uang keluar dan masuk 12 minggu dari mutasi, kartu rekening dengan tombol sembunyikan saldo dan salin nomor, transaksi terakhir, dan dock aksi cepat (Transfer, Mutasi, Terima).
+- **Transfer** empat langkah: cek nama penerima, nominal, konfirmasi dengan PIN, lalu struk. Satu niat transfer memakai satu `Idempotency-Key`, jadi kalau koneksi putus lalu ditekan kirim lagi, saldo tetap terpotong sekali.
+- **Mutasi** dengan filter tanggal (maks. 90 hari) dan ringkasan masuk/keluar.
+- **Rekening**: daftar rekening, buka rekening baru, profil.
+- **Meja teller** (akun admin): setor dan tarik tunai, cari dan bekukan rekening, jejak audit, dan lampu status rekonsiliasi buku besar.
+
+Token disimpan di `sessionStorage`, jadi hilang saat tab ditutup. Respons 401 langsung mengeluarkan pengguna. Tampilan menyesuaikan layar HP (menu pindah ke bawah) dan menghormati pengaturan kurangi animasi.
+
+![Alur transfer sampai struk](docs/ui-transfer.png)
 
 ## Arsitektur
 
@@ -151,7 +170,7 @@ Kode yang dipakai antara lain `VALIDATION_FAILED`, `IDEMPOTENCY_KEY_REQUIRED`, `
 docker compose up --build
 ```
 
-API berjalan di `http://localhost:8080`, Swagger di `http://localhost:8080/swagger-ui.html`. Akun teller untuk lokal: `teller@minibank.local` / `Teller12345` (diatur di `docker-compose.yml`).
+Tampilan web di `http://localhost:8080/`, Swagger di `http://localhost:8080/swagger-ui.html`. Akun teller untuk lokal: `teller@minibank.local` / `Teller12345` (diatur di `docker-compose.yml`).
 
 ### Tanpa Docker
 

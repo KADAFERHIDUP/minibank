@@ -73,6 +73,16 @@ class SecurityRulesTest extends IntegrationTest {
     }
 
     @Test
+    void webUiIsPublicButApiStaysLocked() {
+        var page = http.getForEntity("/", String.class);
+        assertThat(page.getStatusCode().value()).isEqualTo(200);
+        assertThat(page.getBody()).contains("/js/app.js");
+        assertThat(http.getForEntity("/js/app.js", String.class).getStatusCode().value()).isEqualTo(200);
+        assertThat(http.getForEntity("/css/app.css", String.class).getStatusCode().value()).isEqualTo(200);
+        assertThat(get("/api/me", null).status()).isEqualTo(401);
+    }
+
+    @Test
     void repeatedFailedLoginIsThrottled() {
         Customer c = newCustomer("Gilang Lupa");
         for (int i = 0; i < 5; i++) {
