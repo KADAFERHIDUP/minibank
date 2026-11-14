@@ -1,0 +1,69 @@
+spring:
+  application:
+    name: minibank
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/minibank}
+    username: ${DB_USER:minibank}
+    password: ${DB_PASSWORD:minibank}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+  mvc:
+    problemdetails:
+      enabled: true
+
+server:
+  port: ${PORT:8080}
+  error:
+    include-stacktrace: never
+    include-message: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+
+minibank:
+  zone: Asia/Jakarta
+  jwt:
+    # Wajib diisi lewat environment variable JWT_SECRET, minimal 32 karakter acak.
+    secret: ${JWT_SECRET:}
+    ttl: ${JWT_TTL:30m}
+    issuer: minibank
+  limits:
+    min-transfer: 10000
+    max-per-transaction: 50000000
+    daily-transfer: 100000000
+    max-accounts-per-user: 3
+  pin:
+    max-attempts: 3
+    lock-duration: 15m
+  login:
+    max-failures: 5
+    window: 15m
+  admin:
+    email: ${ADMIN_EMAIL:}
+    password: ${ADMIN_PASSWORD:}
+    name: Teller MiniBank

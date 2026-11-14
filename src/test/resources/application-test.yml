@@ -1,0 +1,13 @@
+minibank:
+  jwt:
+    secret: test-secret-yang-panjangnya-lebih-dari-32-karakter
+  admin:
+    email: teller@minibank.test
+    password: Teller12345
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 20
+logging:
+  level:
+    org.hibernate.SQL: warn
