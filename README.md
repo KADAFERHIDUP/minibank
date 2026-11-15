@@ -2,11 +2,15 @@
 
 [![CI](https://github.com/KADAFERHIDUP/minibank/actions/workflows/ci.yml/badge.svg)](https://github.com/KADAFERHIDUP/minibank/actions/workflows/ci.yml)
 
+**Demo online:** [minibank-465d7.containers.snapdeploy.app](https://minibank-465d7.containers.snapdeploy.app) · **Halaman proyek:** [minibank.kadaferhidup.my.id](https://minibank.kadaferhidup.my.id) · **API docs:** [Swagger UI](https://minibank-465d7.containers.snapdeploy.app/swagger-ui.html)
+
+> Server demo memakai paket gratis yang tidur setelah 15 menit tanpa pengunjung. Kunjungan pertama butuh sekitar satu menit untuk membangunkannya.
+
 Backend core banking sederhana: nasabah bisa daftar, buka rekening, cek nama penerima, transfer pakai PIN, dan melihat mutasi. Teller bisa setor dan tarik tunai, membekukan rekening, melihat jejak audit, dan menjalankan rekonsiliasi buku besar.
 
 Fokus proyek ini bukan jumlah fitur, tapi **kebenaran data uang**: saldo tidak boleh minus, uang tidak boleh hilang atau tercipta, dan permintaan yang terkirim dua kali tidak boleh memotong saldo dua kali, termasuk saat ada banyak permintaan di detik yang sama.
 
-Ada juga tampilan web internet banking di `http://localhost:8080/`, ditulis tanpa framework (HTML, CSS, JavaScript biasa) dan disajikan langsung oleh Spring Boot.
+Ada juga tampilan web internet banking (di demo online, atau `http://localhost:8080/` kalau dijalankan sendiri), ditulis tanpa framework (HTML, CSS, JavaScript biasa) dan disajikan langsung oleh Spring Boot.
 
 ![Beranda MiniBank](docs/ui-beranda.png)
 
@@ -191,12 +195,12 @@ mvn spring-boot:run
 | `JWT_TTL` | `30m` | Masa berlaku token |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | kosong | Kalau diisi, akun teller dibuat saat start |
 
-### Online: Supabase + Render
+### Online: Supabase + SnapDeploy
 
-Database memakai PostgreSQL di [Supabase](https://supabase.com), aplikasinya di-deploy dari `Dockerfile` ke [Render](https://render.com).
+Database memakai PostgreSQL di [Supabase](https://supabase.com), aplikasinya di-deploy dari `Dockerfile` ke [SnapDeploy](https://snapdeploy.dev). Server SnapDeploy memakai CPU ARM, jadi image dasar di `Dockerfile` dipilih yang tersedia untuk x86 dan ARM (CI mengecek ini).
 
 1. Di Supabase, buat project (region Singapore). Dari tombol **Connect**, ambil koneksi **Session pooler** (port 5432, jalan di IPv4).
-2. Di Render, buat **Web Service** dari repo ini. Render membaca `Dockerfile` sendiri.
+2. Di SnapDeploy, pilih **Deploy from GitHub**, repo ini, branch `main`, ukuran **Small** (gratis). Saat diminta database, pilih **external / hosted PostgreSQL**. SnapDeploy membaca `Dockerfile` sendiri dan mengisi `PORT` otomatis.
 3. Isi environment variable:
 
 | Variable | Isi |
@@ -206,7 +210,7 @@ Database memakai PostgreSQL di [Supabase](https://supabase.com), aplikasinya di-
 | `DB_PASSWORD` | password database Supabase |
 | `DB_POOL_SIZE` | `5` |
 | `JWT_SECRET` | string acak minimal 32 karakter |
-| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | akun teller produksi, jangan pakai password contoh |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | akun teller produksi, jangan pakai password contoh. Akun ini dibuat sekali saat aplikasi pertama kali nyala; mengganti variabelnya kemudian tidak mengubah password yang sudah ada |
 
 Kalau Flyway menolak jalan dengan pesan *Found non-empty schema "public" but no schema history table*, berarti schema `public` di Supabase sudah berisi objek bawaan (misalnya fungsi `rls_auto_enable`). Pastikan tidak ada tabel bernama sama dengan tabel MiniBank, lalu tambahkan:
 
@@ -217,7 +221,9 @@ Kalau Flyway menolak jalan dengan pesan *Found non-empty schema "public" but no 
 
 Flyway membuat tabel saat aplikasi pertama kali jalan. Migrasi `V2` menyalakan RLS di semua tabel MiniBank dan mencabut hak role `anon`/`authenticated`, jadi data tidak bisa dibaca lewat Data API Supabase walaupun anon key bocor. Aplikasi konek sebagai pemilik tabel, jadi tidak terpengaruh.
 
-Paket gratis Render tidur setelah 15 menit tanpa pengunjung, dan butuh sekitar satu menit untuk bangun lagi.
+Paket gratis SnapDeploy tidur setelah 15 menit tanpa pengunjung, butuh sekitar satu menit untuk bangun lagi, dan dibatasi 100 jam jalan per bulan. Setiap push ke `main` memicu deploy ulang otomatis.
+
+SnapDeploy menolak `Dockerfile` yang berisi pola `/dev/tcp` (mirip reverse shell), jadi health check di image memakai `curl`. CI ikut menolak pola itu.
 
 ### Coba alurnya dengan curl
 
