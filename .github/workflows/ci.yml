@@ -32,6 +32,12 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - name: Pastikan image dasar tersedia untuk x86 dan ARM
+        run: |
+          for img in maven:3.9-eclipse-temurin-21 eclipse-temurin:21-jre; do
+            docker manifest inspect "$img" | grep -q '"architecture": "arm64"' || { echo "$img tidak punya versi ARM"; exit 1; }
+            docker manifest inspect "$img" | grep -q '"architecture": "amd64"' || { echo "$img tidak punya versi x86"; exit 1; }
+          done
       - name: Build image Docker
         run: docker build -t minibank:ci .
       - name: Smoke test dengan PostgreSQL
@@ -43,6 +49,8 @@ jobs:
             -e DB_URL=jdbc:postgresql://db:5432/minibank -e JWT_SECRET=rahasia-ci-yang-panjangnya-lebih-dari-32-karakter \
             -e ADMIN_EMAIL=teller@minibank.local -e ADMIN_PASSWORD=Teller12345 minibank:ci
           for i in $(seq 1 60); do curl -fs localhost:8080/actuator/health && break; sleep 2; done
+          for i in $(seq 1 30); do [ "$(docker inspect -f '{{.State.Health.Status}}' api)" = healthy ] && break; sleep 3; done
+          docker inspect -f '{{.State.Health.Status}}' api | grep -x healthy
           curl -fs localhost:8080/actuator/health | grep UP
           curl -fs localhost:8080/v3/api-docs > /dev/null
           curl -fs localhost:8080/ | grep -q "js/app.js"
