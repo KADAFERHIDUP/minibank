@@ -208,6 +208,13 @@ Database memakai PostgreSQL di [Supabase](https://supabase.com), aplikasinya di-
 | `JWT_SECRET` | string acak minimal 32 karakter |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | akun teller produksi, jangan pakai password contoh |
 
+Kalau Flyway menolak jalan dengan pesan *Found non-empty schema "public" but no schema history table*, berarti schema `public` di Supabase sudah berisi objek bawaan (misalnya fungsi `rls_auto_enable`). Pastikan tidak ada tabel bernama sama dengan tabel MiniBank, lalu tambahkan:
+
+| Variable | Isi |
+|---|---|
+| `SPRING_FLYWAY_BASELINE_ON_MIGRATE` | `true` |
+| `SPRING_FLYWAY_BASELINE_VERSION` | `0` (harus 0, supaya migrasi V1 tetap dijalankan) |
+
 Flyway membuat tabel saat aplikasi pertama kali jalan. Migrasi `V2` menyalakan RLS di semua tabel MiniBank dan mencabut hak role `anon`/`authenticated`, jadi data tidak bisa dibaca lewat Data API Supabase walaupun anon key bocor. Aplikasi konek sebagai pemilik tabel, jadi tidak terpengaruh.
 
 Paket gratis Render tidur setelah 15 menit tanpa pengunjung, dan butuh sekitar satu menit untuk bangun lagi.
