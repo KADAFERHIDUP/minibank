@@ -368,7 +368,8 @@
     const out = it.direction === 'DEBIT';
     if (it.type === 'DEPOSIT') return { title: 'Setor tunai', out };
     if (it.type === 'WITHDRAWAL') return { title: 'Tarik tunai', out };
-    return { title: out ? `Transfer ke ${it.counterparty}` : `Transfer dari ${it.counterparty}`, out };
+    const who = it.counterpartyName || fmtNo(it.counterparty, false);
+    return { title: out ? `Transfer ke ${who}` : `Transfer dari ${who}`, out };
   }
 
   /* =====================================================================

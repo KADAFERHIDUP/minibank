@@ -52,9 +52,11 @@ class BankingFlowTest extends IntegrationTest {
         assertThat(lines.get(0).path("reference").asText()).isEqualTo(ref);
         assertThat(lines.get(0).path("direction").asText()).isEqualTo("DEBIT");
         assertThat(lines.get(0).path("counterparty").asText()).isEqualTo(receiver.account());
+        assertThat(lines.get(0).path("counterpartyName").asText()).isEqualTo("Ci*** Le*****");
         assertThat(lines.get(0).path("balanceAfter").decimalValue()).isEqualByComparingTo("375000");
         assertThat(lines.get(1).path("type").asText()).isEqualTo("DEPOSIT");
         assertThat(lines.get(1).path("counterparty").asText()).isEqualTo("TUNAI");
+        assertThat(lines.get(1).path("counterpartyName").isNull()).isTrue();
 
         assertThat(get("/api/transactions/" + ref, receiver.token()).status()).isEqualTo(200);
         Customer stranger = newCustomer("Dodi Orang Lain");

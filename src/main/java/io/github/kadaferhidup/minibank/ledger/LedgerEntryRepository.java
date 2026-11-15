@@ -14,8 +14,10 @@ public interface LedgerEntryRepository extends JpaRepository<LedgerEntry, Long> 
     @Query(value = """
             select e from LedgerEntry e
               join fetch e.transaction t
-              left join fetch t.sourceAccount
-              left join fetch t.destAccount
+              left join fetch t.sourceAccount sa
+              left join fetch sa.owner
+              left join fetch t.destAccount da
+              left join fetch da.owner
             where e.account.id = :accountId and e.createdAt >= :from and e.createdAt < :to
             order by e.id desc
             """,
