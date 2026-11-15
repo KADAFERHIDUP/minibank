@@ -32,6 +32,9 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - name: Tolak pola yang diblokir hosting
+        # SnapDeploy menolak Dockerfile berisi /dev/tcp karena mirip reverse shell
+        run: "! grep -n '/dev/tcp' Dockerfile"
       - name: Pastikan image dasar tersedia untuk x86 dan ARM
         run: |
           for img in maven:3.9-eclipse-temurin-21 eclipse-temurin:21-jre; do
