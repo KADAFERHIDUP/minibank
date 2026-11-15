@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MiniBank · Proyek core banking Ahmad Umraithi</title>
+  <meta name="description" content="MiniBank: backend core banking dengan Java Spring Boot dan PostgreSQL. Pembukuan berpasangan, transfer anti ganda, PIN terkunci otomatis. Proyek demo, bukan bank asli.">
+  <meta name="theme-color" content="#BFBDB8">
+  <link rel="icon" href="favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #BFBDB8; --card: #DAD7D2; --paper: #F1EFEB;
+      --ink: #0B0B0B; --ink-2: #4A4844; --ink-3: #66645F;
+      --red: #E42320; --red-ink: #B3150F;
+      --r: 22px; --r-sm: 14px;
+    }
+    * { box-sizing: border-box; margin: 0; }
+    html { scroll-behavior: smooth; }
+    body { background: var(--bg); color: var(--ink); font: 400 17px/1.55 "Inter Tight", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: inherit; }
+    a:focus-visible, button:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; border-radius: 8px; }
+    .wrap { max-width: 1160px; margin: 0 auto; padding: 0 clamp(20px, 4vw, 48px); }
+
+    header { display: flex; justify-content: space-between; align-items: center; padding: 28px 0; }
+    .mark { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 20px; letter-spacing: -.02em; text-decoration: none; }
+    .mark i { width: 14px; height: 14px; border-radius: 50%; background: var(--red); }
+    header nav { display: flex; gap: 22px; font-size: 15px; }
+    header nav a { text-decoration: none; color: var(--ink-2); }
+    header nav a:hover { color: var(--ink); }
+
+    .hero { display: grid; grid-template-columns: 1.3fr .7fr; gap: 40px; align-items: center; padding: clamp(48px, 9vw, 120px) 0 clamp(40px, 6vw, 80px); }
+    h1 { font-size: clamp(48px, 8.4vw, 112px); line-height: .92; letter-spacing: -.055em; font-weight: 700; }
+    h1 span { display: block; color: var(--ink-3); }
+    .lede { max-width: 34em; margin-top: 28px; font-size: 19px; color: var(--ink-2); }
+    .ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 34px; }
+    .btn { display: inline-flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 26px; border-radius: 999px; font-weight: 600; text-decoration: none; background: var(--ink); color: var(--paper); }
+    .btn.ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 2px var(--ink); }
+    .btn:hover { opacity: .88; }
+    .note { margin-top: 14px; font-size: 14px; color: var(--ink-3); }
+    .dots { justify-self: center; display: grid; grid-template-columns: repeat(3, 72px); grid-template-rows: repeat(3, 72px); }
+    .dots i { width: 72px; height: 72px; border-radius: 50%; background: var(--ink); }
+    .dots i:nth-child(1) { grid-area: 1 / 2; } .dots i:nth-child(2) { grid-area: 2 / 1; }
+    .dots i:nth-child(3) { grid-area: 2 / 3; background: var(--red); } .dots i:nth-child(4) { grid-area: 3 / 2; }
+
+    section { padding: clamp(48px, 7vw, 96px) 0; }
+    h2 { font-size: clamp(32px, 4.4vw, 56px); line-height: 1; letter-spacing: -.045em; font-weight: 700; }
+    h2 span { display: block; color: var(--ink-3); }
+    .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 40px; }
+    .card { background: var(--card); border-radius: var(--r); padding: 28px; }
+    .card h3 { font-size: 20px; letter-spacing: -.02em; margin-bottom: 8px; }
+    .card p { color: var(--ink-2); font-size: 16px; }
+
+    /* Satu transfer = dua baris buku besar */
+    .ledger-wrap { display: grid; grid-template-columns: .8fr 1.2fr; gap: 40px; align-items: start; }
+    .ledger-wrap > p { color: var(--ink-2); margin-top: 20px; max-width: 30em; }
+    .ledger { background: var(--paper); border-radius: var(--r); padding: 26px 28px; font-variant-numeric: tabular-nums; }
+    .ledger header { padding: 0 0 16px; border-bottom: 2px solid var(--ink); font-size: 15px; }
+    .ledger header b { font-size: 17px; }
+    .row { display: grid; grid-template-columns: 1fr auto auto; gap: 18px; padding: 16px 0; border-bottom: 1px solid #CFCCC6; align-items: baseline; }
+    .row small { display: block; color: var(--ink-3); font-size: 14px; }
+    .tag { font-size: 13px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--card); }
+    .tag.d { background: var(--ink); color: var(--paper); }
+    .amt { font-weight: 600; min-width: 7.5em; text-align: right; }
+    .amt.out { color: var(--red-ink); }
+    .sum { display: flex; justify-content: space-between; padding-top: 16px; font-weight: 600; }
+    .sum span { display: inline-flex; align-items: center; gap: 8px; }
+    .sum i { width: 10px; height: 10px; border-radius: 50%; background: var(--ink); }
+
+    .shots { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 40px; }
+    .shots figure { background: var(--card); border-radius: var(--r); padding: 12px; }
+    .shots img { width: 100%; height: auto; display: block; border-radius: var(--r-sm); }
+    .shots figcaption { font-size: 14px; color: var(--ink-2); padding: 12px 6px 4px; }
+
+    .stack { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 32px; }
+    .stack span { background: var(--card); border-radius: 999px; padding: 8px 16px; font-size: 15px; font-weight: 500; }
+
+    footer { padding: 56px 0 64px; border-top: 2px solid var(--ink); display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: end; }
+    footer h2 { font-size: clamp(28px, 3.4vw, 40px); }
+    footer ul { list-style: none; padding: 0; display: grid; gap: 6px; text-align: right; }
+    footer .demo-flag { grid-column: 1 / -1; font-size: 14px; color: var(--ink-3); }
+
+    @media (max-width: 860px) {
+      header nav { display: none; }
+      .hero, .ledger-wrap, .grid3, .shots, footer { grid-template-columns: 1fr; }
+      .dots { display: none; }
+      footer ul { text-align: left; }
+      .row { grid-template-columns: 1fr auto; }
+      .row .tag { grid-row: 1; grid-column: 2; }
+      .row .amt { grid-column: 1 / -1; text-align: left; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <a class="mark" href="#"><i aria-hidden="true"></i>MiniBank</a>
+      <nav aria-label="Bagian halaman">
+        <a href="#cara-kerja">Cara kerja</a>
+        <a href="#tampilan">Tampilan</a>
+        <a href="https://github.com/KADAFERHIDUP/minibank">Kode</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero" aria-labelledby="judul">
+        <div>
+          <h1 id="judul">Bank kecil,<span>pembukuan rapi.</span></h1>
+          <p class="lede">MiniBank adalah backend core banking yang saya bangun dengan Java Spring Boot dan PostgreSQL. Nasabah bisa buka rekening, transfer pakai PIN, dan melihat mutasi. Teller bisa setor, tarik, membekukan rekening, dan mengecek apakah buku besar masih seimbang.</p>
+          <div class="ctas">
+            <a class="btn" href="https://minibank-465d7.containers.snapdeploy.app">Coba demo</a>
+            <a class="btn ghost" href="https://github.com/KADAFERHIDUP/minibank">Lihat kode di GitHub</a>
+          </div>
+          <p class="note">Server demo tidur kalau tidak dipakai. Kunjungan pertama butuh sekitar satu menit untuk membangunkannya.</p>
+        </div>
+        <div class="dots" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      </section>
+
+      <section aria-labelledby="fitur">
+        <h2 id="fitur">Yang dijaga<span>bukan jumlah fitur, tapi uangnya.</span></h2>
+        <div class="grid3">
+          <article class="card">
+            <h3>Pembukuan berpasangan</h3>
+            <p>Setiap transaksi menulis satu debit dan satu kredit dengan jumlah sama. Total debit dan kredit di buku besar selalu seimbang, dan teller bisa mengeceknya kapan saja.</p>
+          </article>
+          <article class="card">
+            <h3>Transfer anti ganda</h3>
+            <p>Setiap permintaan transfer membawa Idempotency-Key. Tombol kirim yang terpencet dua kali, atau koneksi yang putus lalu dikirim ulang, tetap jadi satu transaksi.</p>
+          </article>
+          <article class="card">
+            <h3>Aman saat ramai</h3>
+            <p>Rekening dikunci dengan urutan tetap selama transfer, sehingga ratusan transfer di detik yang sama tidak membuat saldo minus atau saling menunggu selamanya.</p>
+          </article>
+          <article class="card">
+            <h3>PIN terkunci otomatis</h3>
+            <p>Salah PIN tiga kali membuat PIN terkunci 15 menit. Login yang gagal berulang kali juga dibatasi.</p>
+          </article>
+          <article class="card">
+            <h3>Jejak audit</h3>
+            <p>Daftar, login, transfer, PIN salah, sampai pembekuan rekening tercatat lengkap dengan waktu dan alamat IP.</p>
+          </article>
+          <article class="card">
+            <h3>Diuji otomatis</h3>
+            <p>Test integrasi berjalan di PostgreSQL asli lewat Testcontainers, termasuk test transfer bersamaan. GitHub Actions menjalankan semuanya di setiap pull request.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="cara-kerja" aria-labelledby="ledger-judul">
+        <div class="ledger-wrap">
+          <div>
+            <h2 id="ledger-judul">Satu transfer,<span>dua baris.</span></h2>
+            <p>Ini isi buku besar dari demo online setelah dua setoran tunai dan satu transfer. Rekening kas bank memang bernilai minus: artinya bank sedang memegang uang tunai yang sudah dititipkan ke rekening nasabah.</p>
+          </div>
+          <div class="ledger" role="table" aria-label="Contoh buku besar">
+            <header role="row"><b>Buku besar</b></header>
+            <div class="row" role="row">
+              <div role="cell">Setor tunai<small>Keluar dari kas bank</small></div>
+              <span class="tag d" role="cell">Debit</span><span class="amt out" role="cell">Rp5.000.000</span>
+            </div>
+            <div class="row" role="row">
+              <div role="cell">Setor tunai<small>Masuk ke rekening nasabah A</small></div>
+              <span class="tag" role="cell">Kredit</span><span class="amt" role="cell">Rp5.000.000</span>
+            </div>
+            <div class="row" role="row">
+              <div role="cell">Transfer "Bayar kos"<small>Keluar dari rekening nasabah B</small></div>
+              <span class="tag d" role="cell">Debit</span><span class="amt out" role="cell">Rp500.000</span>
+            </div>
+            <div class="row" role="row">
+              <div role="cell">Transfer "Bayar kos"<small>Masuk ke rekening nasabah A</small></div>
+              <span class="tag" role="cell">Kredit</span><span class="amt" role="cell">Rp500.000</span>
+            </div>
+            <div class="sum"><span><i aria-hidden="true"></i>Debit = kredit</span><span>Seimbang</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tampilan" aria-labelledby="tampilan-judul">
+        <h2 id="tampilan-judul">Ada tampilan webnya<span>juga.</span></h2>
+        <div class="shots">
+          <figure>
+            <img src="ui-beranda.png" alt="Beranda MiniBank: grafik uang keluar dan masuk 12 minggu, kartu rekening, dan transaksi terakhir" width="1440" height="940" loading="lazy">
+            <figcaption>Beranda nasabah: grafik 12 minggu, kartu rekening, transaksi terakhir.</figcaption>
+          </figure>
+          <figure>
+            <img src="ui-transfer.png" alt="Struk transfer MiniBank setelah transfer berhasil" width="1440" height="900" loading="lazy">
+            <figcaption>Transfer empat langkah dengan PIN, berakhir di struk.</figcaption>
+          </figure>
+        </div>
+        <div class="stack" aria-label="Teknologi">
+          <span>Java 21</span><span>Spring Boot 3.5</span><span>Spring Security JWT</span><span>PostgreSQL 16</span><span>Flyway</span><span>JUnit 5</span><span>Testcontainers</span><span>Docker</span><span>GitHub Actions</span><span>Supabase</span>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div>
+        <h2>Ahmad Umraithi</h2>
+        <p class="note">Mahasiswa Teknik Informatika, Universitas Malikussaleh, Lhokseumawe.</p>
+      </div>
+      <ul>
+        <li><a href="https://github.com/KADAFERHIDUP">GitHub</a></li>
+        <li><a href="https://www.linkedin.com/in/ahmadumraithi">LinkedIn</a></li>
+        <li><a href="mailto:umraithi769@gmail.com">umraithi769@gmail.com</a></li>
+      </ul>
+      <p class="demo-flag">MiniBank adalah proyek portofolio. Bukan bank asli, tidak memakai uang sungguhan, dan tidak terhubung ke bank mana pun.</p>
+    </footer>
+  </div>
+</body>
+</html>
