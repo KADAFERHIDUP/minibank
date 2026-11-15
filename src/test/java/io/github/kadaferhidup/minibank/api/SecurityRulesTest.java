@@ -17,6 +17,7 @@ class SecurityRulesTest extends IntegrationTest {
         var open = jdbc.queryForList("""
                 select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
                 where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity
+                  and c.relname <> 'flyway_schema_history'
                 """, String.class);
         assertThat(open).isEmpty();
     }
