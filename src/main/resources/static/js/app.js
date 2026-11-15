@@ -16,6 +16,8 @@
     : 'k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12));
   const nf = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 });
   const TZ = 'Asia/Jakarta';
+  // tombol isi akun teller hanya untuk percobaan di komputer sendiri, tidak tampil di server online
+  const LOCAL = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
 
   const S = {
     token: store.get('mb.token'),
@@ -245,9 +247,9 @@
           <span class="err" data-err="password"></span></div>
         <button class="btn block" type="submit">Masuk</button>
       </form>
-      <p class="demo">Mau mencoba sebagai teller di komputer sendiri? <button type="button" id="demo">Isi akun teller</button></p>`;
+      ${LOCAL ? '<p class="demo">Mau mencoba sebagai teller di komputer sendiri? <button type="button" id="demo">Isi akun teller</button></p>' : ''}`;
     const f = $('#f');
-    $('#demo').onclick = () => { f.email.value = 'teller@minibank.local'; f.password.value = 'Teller12345'; f.email.focus(); };
+    if (LOCAL) $('#demo').onclick = () => { f.email.value = 'teller@minibank.local'; f.password.value = 'Teller12345'; f.email.focus(); };
     f.onsubmit = async (e) => {
       e.preventDefault();
       const btn = $('button[type=submit]', f);
