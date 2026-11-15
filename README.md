@@ -191,6 +191,27 @@ mvn spring-boot:run
 | `JWT_TTL` | `30m` | Masa berlaku token |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | kosong | Kalau diisi, akun teller dibuat saat start |
 
+### Online: Supabase + Render
+
+Database memakai PostgreSQL di [Supabase](https://supabase.com), aplikasinya di-deploy dari `Dockerfile` ke [Render](https://render.com).
+
+1. Di Supabase, buat project (region Singapore). Dari tombol **Connect**, ambil koneksi **Session pooler** (port 5432, jalan di IPv4).
+2. Di Render, buat **Web Service** dari repo ini. Render membaca `Dockerfile` sendiri.
+3. Isi environment variable:
+
+| Variable | Isi |
+|---|---|
+| `DB_URL` | `jdbc:postgresql://<host-pooler>:5432/postgres?sslmode=require` |
+| `DB_USER` | `postgres.<project-ref>` |
+| `DB_PASSWORD` | password database Supabase |
+| `DB_POOL_SIZE` | `5` |
+| `JWT_SECRET` | string acak minimal 32 karakter |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | akun teller produksi, jangan pakai password contoh |
+
+Flyway membuat tabel saat aplikasi pertama kali jalan. Migrasi `V2` menyalakan RLS di semua tabel MiniBank dan mencabut hak role `anon`/`authenticated`, jadi data tidak bisa dibaca lewat Data API Supabase walaupun anon key bocor. Aplikasi konek sebagai pemilik tabel, jadi tidak terpengaruh.
+
+Paket gratis Render tidur setelah 15 menit tanpa pengunjung, dan butuh sekitar satu menit untuk bangun lagi.
+
 ### Coba alurnya dengan curl
 
 ```bash
