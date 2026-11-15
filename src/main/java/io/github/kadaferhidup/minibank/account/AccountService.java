@@ -122,8 +122,11 @@ public class AccountService {
     private static StatementLine line(LedgerEntry e) {
         BankTransaction t = e.getTransaction();
         Account other = e.getDirection() == Direction.DEBIT ? t.getDestAccount() : t.getSourceAccount();
-        String counterparty = other == null ? null : other.isInternal() ? "TUNAI" : other.getAccountNumber();
+        boolean cash = other != null && other.isInternal();
+        String counterparty = other == null ? null : cash ? "TUNAI" : other.getAccountNumber();
+        // nama lawan transaksi disamarkan seperti di cek rekening, supaya mutasi tidak membuka nama lengkap orang lain
+        String counterpartyName = other == null || cash ? null : Masking.name(other.getOwner().getFullName());
         return new StatementLine(e.getCreatedAt(), t.getReference(), t.getType(), e.getDirection(), e.getAmount(),
-                e.getBalanceAfter(), counterparty, t.getDescription());
+                e.getBalanceAfter(), counterparty, counterpartyName, t.getDescription());
     }
 }

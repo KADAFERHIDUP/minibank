@@ -16,7 +16,8 @@ public final class AccountDtos {
     }
 
     public record StatementLine(Instant date, String reference, TransactionType type, Direction direction,
-                                BigDecimal amount, BigDecimal balanceAfter, String counterparty, String description) {
+                                BigDecimal amount, BigDecimal balanceAfter, String counterparty, String counterpartyName,
+                                String description) {
     }
 
     public record StatementResponse(String accountNumber, BigDecimal currentBalance, int page, int size,
