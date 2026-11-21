@@ -1,6 +1,11 @@
 minibank:
   jwt:
     secret: test-secret-yang-panjangnya-lebih-dari-32-karakter
+  rate-limit:
+    # banyak test mendaftar dan login dari 127.0.0.1; filternya tetap jalan, batasnya saja yang longgar
+    login-per-minute: 10000
+    register-per-hour: 10000
+    inquiry-per-minute: 10000
   admin:
     email: teller@minibank.test
     password: Teller12345

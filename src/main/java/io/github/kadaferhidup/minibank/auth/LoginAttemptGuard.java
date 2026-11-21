@@ -7,18 +7,26 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import org.springframework.stereotype.Component;
 
 /**
- * Membatasi login gagal per email dalam jendela waktu tertentu untuk menahan brute force.
- * Disimpan di memori: cukup untuk satu instance. Untuk banyak instance, pindahkan ke Redis.
+ * Membatasi percobaan login per email dalam jendela waktu tertentu untuk menahan brute force.
+ *
+ * <p>Setiap percobaan dicatat <em>sebelum</em> password dicek, dalam satu operasi atomik. Login yang
+ * berhasil menghapus catatannya. Dengan begitu seratus tebakan yang dikirim bersamaan tetap hanya
+ * mendapat jatah {@code max-failures}, bukan semuanya lolos karena membaca hitungan yang sama.
+ *
+ * <p>Disimpan di memori: cukup untuk satu instance. Untuk banyak instance, pindahkan ke Redis.
  */
 @Component
 public class LoginAttemptGuard {
 
-    private final Map<String, Deque<Instant>> failures = new ConcurrentHashMap<>();
+    /** Batas jumlah email yang dilacak, supaya email acak tidak membuat memori terus tumbuh. */
+    static final int MAX_TRACKED = 20_000;
+
+    private final ConcurrentMap<String, Deque<Instant>> attempts = new ConcurrentHashMap<>();
     private final BankProperties props;
     private final Clock clock;
 
@@ -27,36 +35,52 @@ public class LoginAttemptGuard {
         this.clock = clock;
     }
 
-    public void check(String email) {
-        Deque<Instant> q = failures.get(email);
-        if (q == null) {
-            return;
-        }
-        synchronized (q) {
-            prune(q);
-            if (q.size() >= props.login().maxFailures()) {
-                throw new ApiException(ErrorCode.TOO_MANY_ATTEMPTS,
-                        "Terlalu banyak percobaan login gagal. Coba lagi beberapa menit lagi");
+    /** Memesan satu percobaan login. Melempar TOO_MANY_ATTEMPTS kalau jatahnya sudah habis. */
+    public void attempt(String email) {
+        Instant now = clock.instant();
+        Instant cutoff = now.minus(props.login().window());
+        int max = props.login().maxFailures();
+        boolean[] blocked = {false};
+        attempts.compute(email, (k, q) -> {
+            Deque<Instant> d = q != null ? q : new ArrayDeque<>();
+            prune(d, cutoff);
+            if (d.size() >= max) {
+                blocked[0] = true;
+            } else {
+                d.addLast(now);
             }
+            return d;
+        });
+        if (attempts.size() > MAX_TRACKED) {
+            sweep(cutoff);
+        }
+        if (blocked[0]) {
+            throw new ApiException(ErrorCode.TOO_MANY_ATTEMPTS,
+                    "Terlalu banyak percobaan login gagal. Coba lagi beberapa menit lagi");
         }
     }
 
-    public void recordFailure(String email) {
-        Deque<Instant> q = failures.computeIfAbsent(email, k -> new ArrayDeque<>());
-        synchronized (q) {
-            prune(q);
-            q.addLast(clock.instant());
-        }
-    }
-
+    /** Dipanggil setelah login berhasil. */
     public void reset(String email) {
-        failures.remove(email);
+        attempts.remove(email);
     }
 
-    private void prune(Deque<Instant> q) {
-        Instant cutoff = clock.instant().minus(props.login().window());
-        while (!q.isEmpty() && q.peekFirst().isBefore(cutoff)) {
-            q.pollFirst();
+    int tracked() {
+        return attempts.size();
+    }
+
+    private void sweep(Instant cutoff) {
+        for (String key : attempts.keySet()) {
+            attempts.computeIfPresent(key, (k, d) -> {
+                prune(d, cutoff);
+                return d.isEmpty() ? null : d;
+            });
+        }
+    }
+
+    private static void prune(Deque<Instant> d, Instant cutoff) {
+        while (!d.isEmpty() && d.peekFirst().isBefore(cutoff)) {
+            d.pollFirst();
         }
     }
 }

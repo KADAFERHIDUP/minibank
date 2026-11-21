@@ -60,6 +60,14 @@ minibank:
   login:
     max-failures: 5
     window: 15m
+  rate-limit:
+    enabled: ${RATE_LIMIT_ENABLED:true}
+    # SnapDeploy dan platform sejenis menaruh aplikasi di belakang reverse proxy.
+    # Isi false kalau aplikasi bisa diakses langsung tanpa proxy.
+    trust-forwarded-for: ${TRUST_FORWARDED_FOR:true}
+    login-per-minute: 20
+    register-per-hour: 10
+    inquiry-per-minute: 30
   admin:
     email: ${ADMIN_EMAIL:}
     password: ${ADMIN_PASSWORD:}

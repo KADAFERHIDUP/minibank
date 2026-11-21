@@ -28,8 +28,12 @@ Ada juga tampilan web internet banking (di demo online, atau `http://localhost:8
 | Deadlock saat A transfer ke B bersamaan B ke A | Rekening selalu dikunci **dalam urutan id yang sama**, jadi tidak ada siklus saling tunggu. |
 | Tombol "Kirim" kepencet dua kali, atau jaringan putus lalu aplikasi mengulang | Header **`Idempotency-Key`** wajib. Kunci diklaim lewat unique constraint di dalam transaksi yang sama; permintaan kembar mendapat hasil transaksi pertama (`200`, `Idempotent-Replayed: true`) tanpa memotong saldo lagi. Kunci yang sama dengan isi berbeda ditolak. |
 | Saldo dibaca sebelum dikunci (lost update) | Nomor rekening diterjemahkan ke id lewat query skalar, entitas baru dimuat **setelah** baris dikunci, jadi saldo yang dihitung selalu yang terbaru. |
-| PIN ditebak berkali-kali | Salah 3 kali → PIN terkunci 15 menit. Hitungan salah disimpan di transaksi terpisah (`REQUIRES_NEW`) supaya tetap tercatat walau transfernya ditolak. PIN lemah seperti `123456` ditolak saat daftar. |
-| Brute force login, dan menebak email terdaftar | Login gagal dibatasi per email, dan pesan error serta waktu respons dibuat sama untuk email terdaftar maupun tidak (dicek dengan hash BCrypt pembanding). |
+| PIN ditebak berkali-kali | Salah 3 kali → PIN terkunci 15 menit. Hitungan salah disimpan di transaksi terpisah (`REQUIRES_NEW`) supaya tetap tercatat walau transfernya ditolak. Baris pengguna dikunci `FOR UPDATE` selama verifikasi, jadi 15 tebakan yang dikirim bersamaan tetap hanya mendapat 3 kesempatan. PIN lemah seperti `123456` ditolak saat daftar. |
+| Brute force login, dan menebak email terdaftar | Setiap percobaan login dicatat **sebelum** password dicek, dalam satu operasi atomik per email, jadi tebakan paralel tidak bisa melewati batas. Pesan error dan waktu respons dibuat sama untuk email terdaftar maupun tidak (dicek dengan hash BCrypt pembanding). |
+| Banjir permintaan dari satu alamat | Login, daftar, dan cek nama penerima dibatasi per IP dengan token bucket (`429` + `Retry-After`). IP diambil dari entri terakhir `X-Forwarded-For` yang ditulis proxy platform, jadi alamat palsu di depannya tidak memberi kuota baru. Jumlah IP dan email yang dilacak dibatasi supaya memori tidak terus tumbuh. |
+| Membuka rekening melebihi batas lewat permintaan paralel | Baris pemilik dikunci sebelum jumlah rekeningnya dihitung. |
+| Token dari aplikasi lain dipakai di sini | Selain tanda tangan HS256 dan masa berlaku, `iss` token wajib `minibank`. |
+| Akun teller dengan password lemah | Aplikasi menolak membuat admin awal kalau `ADMIN_PASSWORD` kurang dari 10 karakter atau tidak berisi huruf dan angka. |
 | Melihat atau memakai rekening orang lain | Rekening milik orang lain dijawab `404`, sama dengan rekening yang tidak ada, supaya nomor rekening tidak bisa ditebak lewat API. |
 | Salah ketik nomor rekening tujuan | Nomor rekening 10 digit memakai **digit pemeriksa Luhn**, jadi salah ketik satu angka langsung tertolak. Ada juga endpoint cek nama penerima yang menyamarkan nama (`Ah*** Um******`). |
 | Bukti kalau datanya benar | Endpoint **rekonsiliasi** memeriksa total debit = total kredit, tiap transaksi seimbang, dan saldo tiap rekening sama dengan hasil hitung ulang buku besar. |
@@ -149,6 +153,7 @@ Bisa diubah di `application.yml` bagian `minibank`.
 | Limit transfer harian per rekening | Rp100.000.000 (hari dihitung zona Asia/Jakarta) |
 | PIN salah sebelum terkunci | 3 kali, terkunci 15 menit |
 | Login gagal sebelum ditahan | 5 kali dalam 15 menit |
+| Permintaan per IP | login 20/menit, daftar 10/jam, cek nama penerima 30/menit |
 
 ### Format error
 
@@ -193,7 +198,9 @@ mvn spring-boot:run
 | `DB_USER` / `DB_PASSWORD` | `minibank` / `minibank` | |
 | `JWT_SECRET` | wajib | Minimal 32 karakter. Aplikasi menolak jalan kalau kosong. |
 | `JWT_TTL` | `30m` | Masa berlaku token |
-| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | kosong | Kalau diisi, akun teller dibuat saat start |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | kosong | Kalau diisi, akun teller dibuat saat start. Password minimal 10 karakter, berisi huruf dan angka |
+| `RATE_LIMIT_ENABLED` | `true` | Batas permintaan per IP untuk login, daftar, dan cek nama |
+| `TRUST_FORWARDED_FOR` | `true` | Ambil IP klien dari entri terakhir `X-Forwarded-For`. Isi `false` kalau aplikasi bisa diakses langsung tanpa reverse proxy |
 
 ### Online: Supabase + SnapDeploy
 
@@ -276,11 +283,15 @@ Test integrasi menjalankan aplikasi penuh dengan PostgreSQL asli di Docker, buka
 - **A→B dan B→A bersamaan** sebanyak 20 kali → tidak ada deadlock, saldo akhir kembali seperti semula.
 - Saldo kurang, limit per transaksi, limit harian, rekening sama, rekening tujuan tidak valid.
 - PIN salah 3x lalu terkunci, dan PIN benar tetap ditolak selama terkunci.
+- **15 tebakan PIN bersamaan** → tepat 2 `INVALID_PIN` dan 13 `PIN_LOCKED`, saldo utuh.
+- **15 tebakan password bersamaan** → tepat 5 dicek, 10 langsung `429`.
+- **8 permintaan buka rekening bersamaan** → hanya 2 yang lolos, total tetap 3 rekening.
+- Token dengan `iss` lain ditolak walaupun tanda tangannya benar.
 - Rekening dibekukan tidak bisa mengirim atau menerima, lalu bisa lagi setelah diaktifkan.
 - Nasabah tidak bisa melihat, memakai, atau menebak rekening orang lain, dan tidak bisa mengakses endpoint admin.
 - Validasi pendaftaran, email ganda, pembatasan login gagal, dan rekonsiliasi buku besar.
 
-Unit test menguji generator nomor rekening (digit Luhn mendeteksi salah ketik), pembulatan nominal, dan penyamaran nama. Semua test jalan otomatis di GitHub Actions setiap push.
+Unit test menguji generator nomor rekening (digit Luhn mendeteksi salah ketik), pembulatan nominal, penyamaran nama, token bucket per IP, pembacaan `X-Forwarded-For`, dan pembatas login. Semua test jalan otomatis di GitHub Actions setiap push.
 
 ## Struktur proyek
 

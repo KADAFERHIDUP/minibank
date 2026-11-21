@@ -42,10 +42,24 @@ public class AdminSeeder implements ApplicationRunner {
         if (users.existsByEmail(email)) {
             return;
         }
+        requireStrong(admin.password());
         User user = User.create(StringUtils.hasText(admin.name()) ? admin.name() : "Teller MiniBank",
                 email, "081200000000", encoder.encode(admin.password()), null, Role.ADMIN);
         users.save(user);
         audit.log(user.getId(), "ADMIN_SEEDED", email, null, null);
         log.info("Akun admin {} dibuat", email);
+    }
+
+    /**
+     * Akun teller bisa menyetor dan menarik uang di rekening mana pun, jadi password-nya tidak boleh lemah.
+     * Aplikasi sengaja gagal start daripada membuat admin dengan password seperti "admin123".
+     */
+    static void requireStrong(String password) {
+        boolean ok = password.length() >= 10 && password.length() <= 72
+                && password.chars().anyMatch(Character::isLetter)
+                && password.chars().anyMatch(Character::isDigit);
+        if (!ok) {
+            throw new IllegalStateException("ADMIN_PASSWORD terlalu lemah: 10 sampai 72 karakter, berisi huruf dan angka");
+        }
     }
 }

@@ -2,9 +2,15 @@ package io.github.kadaferhidup.minibank.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Instant;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.JwsHeader;
+import org.springframework.security.oauth2.jwt.JwtClaimsSet;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 class SecurityRulesTest extends IntegrationTest {
@@ -117,5 +123,25 @@ class SecurityRulesTest extends IntegrationTest {
         assertThat(unknown.status()).isEqualTo(401);
         assertThat(wrong.status()).isEqualTo(401);
         assertThat(unknown.body().path("detail").asText()).isEqualTo(wrong.body().path("detail").asText());
+    }
+
+    @Autowired
+    JwtEncoder jwtEncoder;
+
+    @Test
+    void tokenFromAnotherIssuerIsRejected() {
+        Customer c = newCustomer("Dimas Issuer");
+        String id = get("/api/me", c.token()).body().path("id").asText();
+
+        assertThat(get("/api/me", forge(id, "minibank")).status()).isEqualTo(200);
+        assertThat(get("/api/me", forge(id, "aplikasi-lain")).status()).isEqualTo(401);
+    }
+
+    private String forge(String subject, String issuer) {
+        Instant now = Instant.now();
+        JwtClaimsSet claims = JwtClaimsSet.builder().issuer(issuer).subject(subject).issuedAt(now)
+                .expiresAt(now.plusSeconds(300)).claim("role", "CUSTOMER").build();
+        return jwtEncoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims))
+                .getTokenValue();
     }
 }
