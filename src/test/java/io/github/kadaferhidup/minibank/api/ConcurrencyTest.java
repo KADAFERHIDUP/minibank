@@ -69,6 +69,45 @@ class ConcurrencyTest extends IntegrationTest {
         assertThat(balance(b)).isEqualByComparingTo("1000000");
     }
 
+    @Test
+    void parallelWrongPinsStillLockAfterThree() throws Exception {
+        Customer thief = newCustomer("Zaki Tebak");
+        Customer receiver = newCustomer("Ahmad Penerima");
+        deposit(thief.account(), "500000");
+
+        // 15 tebakan PIN dikirim di detik yang sama: hitungan gagal tidak boleh dibaca ganda
+        List<Resp> results = runTogether(15, i -> () -> transfer(thief, key(), receiver.account(), "10000",
+                String.format("%06d", 135790 + i)));
+
+        assertThat(results).noneMatch(r -> r.status() == 201);
+        assertThat(results.stream().filter(r -> "INVALID_PIN".equals(r.code())).count()).isEqualTo(2);
+        assertThat(results.stream().filter(r -> "PIN_LOCKED".equals(r.code())).count()).isEqualTo(13);
+        assertThat(transfer(thief, key(), receiver.account(), "10000", PIN).code()).isEqualTo("PIN_LOCKED");
+        assertThat(balance(thief)).isEqualByComparingTo("500000");
+    }
+
+    @Test
+    void parallelWrongPasswordsGetOnlyTheAllowedTries() throws Exception {
+        Customer c = newCustomer("Bayu Diserang");
+
+        List<Resp> results = runTogether(15, i -> () ->
+                post("/api/auth/login", java.util.Map.of("email", c.email(), "password", "Tebakan" + i + "x"), null));
+
+        assertThat(results.stream().filter(r -> r.status() == 401).count()).isEqualTo(5);
+        assertThat(results.stream().filter(r -> r.status() == 429).count()).isEqualTo(10);
+    }
+
+    @Test
+    void parallelAccountOpeningsRespectTheLimit() throws Exception {
+        Customer c = newCustomer("Citra Rekening");
+
+        List<Resp> results = runTogether(8, i -> () -> post("/api/accounts", null, c.token()));
+
+        assertThat(results.stream().filter(r -> r.status() == 201).count()).isEqualTo(2);
+        assertThat(results.stream().filter(r -> "ACCOUNT_LIMIT_REACHED".equals(r.code())).count()).isEqualTo(6);
+        assertThat(get("/api/accounts", c.token()).body()).hasSize(3);
+    }
+
     private List<Resp> runTogether(int n, java.util.function.IntFunction<Callable<Resp>> task) throws Exception {
         ExecutorService pool = Executors.newFixedThreadPool(n);
         CountDownLatch start = new CountDownLatch(1);

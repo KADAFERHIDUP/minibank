@@ -20,6 +20,9 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Verifikasi PIN transaksi. Berjalan di transaksi database sendiri (REQUIRES_NEW) supaya hitungan
  * PIN salah tetap tersimpan walaupun permintaan transfernya ditolak.
+ *
+ * <p>Baris pengguna dikunci selama verifikasi. Tanpa kunci, puluhan tebakan PIN yang dikirim
+ * bersamaan akan membaca hitungan gagal yang sama dan semuanya lolos dari batas tiga kali.
  */
 @Service
 public class PinService {
@@ -58,7 +61,7 @@ public class PinService {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW, noRollbackFor = ApiException.class)
     public void verify(UUID userId, String pin, String ip) {
-        User user = users.findById(userId)
+        User user = users.findByIdForUpdate(userId)
                 .orElseThrow(() -> new ApiException(ErrorCode.INVALID_CREDENTIALS, "Pengguna tidak ditemukan"));
         Instant now = clock.instant();
         if (user.getPinHash() == null) {

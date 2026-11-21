@@ -6,6 +6,9 @@ import org.springframework.security.oauth2.jwt.Jwt;
 
 public final class CurrentUser {
 
+    /** Diisi RequestGuardFilter untuk setiap permintaan. */
+    public static final String CLIENT_IP_ATTRIBUTE = "minibank.clientIp";
+
     private CurrentUser() {
     }
 
@@ -17,8 +20,8 @@ public final class CurrentUser {
         return "ADMIN".equals(jwt.getClaimAsString("role"));
     }
 
-    /** Alamat IP klien. Di balik reverse proxy, atur server.forward-headers-strategy supaya nilainya benar. */
+    /** Alamat IP klien yang sudah ditentukan RequestGuardFilter (benar juga di balik reverse proxy). */
     public static String ip(HttpServletRequest request) {
-        return request.getRemoteAddr();
+        return request.getAttribute(CLIENT_IP_ATTRIBUTE) instanceof String ip ? ip : request.getRemoteAddr();
     }
 }

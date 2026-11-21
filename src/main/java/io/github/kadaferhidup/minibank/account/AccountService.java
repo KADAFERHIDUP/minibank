@@ -54,6 +54,10 @@ public class AccountService {
 
     @Transactional
     public Account open(User owner) {
+        // kunci baris pemilik dulu: dua permintaan buka rekening yang bersamaan tidak boleh
+        // sama-sama melihat "masih 2 rekening" lalu menembus batas
+        users.findByIdForUpdate(owner.getId())
+                .orElseThrow(() -> new ApiException(ErrorCode.INVALID_CREDENTIALS, "Pengguna tidak ditemukan"));
         if (accounts.countByOwnerId(owner.getId()) >= props.limits().maxAccountsPerUser()) {
             throw new ApiException(ErrorCode.ACCOUNT_LIMIT_REACHED,
                     "Maksimal " + props.limits().maxAccountsPerUser() + " rekening per nasabah");

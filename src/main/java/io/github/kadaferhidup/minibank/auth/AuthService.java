@@ -60,11 +60,10 @@ public class AuthService {
 
     public JwtService.TokenResponse login(LoginRequest req, String ip) {
         String email = req.email().trim().toLowerCase();
-        guard.check(email);
+        guard.attempt(email);
         User user = users.findByEmail(email).orElse(null);
         boolean ok = encoder.matches(req.password(), user != null ? user.getPasswordHash() : dummyHash) && user != null;
         if (!ok) {
-            guard.recordFailure(email);
             audit.log(user != null ? user.getId() : null, "LOGIN_FAILED", email, ip, null);
             throw new ApiException(ErrorCode.INVALID_CREDENTIALS, "Email atau password salah");
         }
